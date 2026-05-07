@@ -1,5 +1,6 @@
 package com.badaboomi.acustomgpt.di
 
+import com.badaboomi.acustomgpt.BuildConfig
 import com.badaboomi.acustomgpt.data.remote.OpenAiApiService
 import com.badaboomi.acustomgpt.data.security.EncryptedPrefsManager
 import dagger.Module
@@ -29,7 +30,8 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                        else HttpLoggingInterceptor.Level.NONE
             })
             .build()
 

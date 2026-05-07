@@ -28,6 +28,13 @@ class ChatRepositoryImpl @Inject constructor(
     private val apiService: OpenAiApiService
 ) : ChatRepository {
 
+    companion object {
+        /** Interval between run-status poll requests in milliseconds. */
+        private const val POLL_INTERVAL_MS = 1500L
+        /** Maximum number of poll attempts before giving up on a run. */
+        private const val MAX_POLL_ATTEMPTS = 40
+    }
+
     override fun getAllRooms(): Flow<List<Room>> =
         roomDao.getAllRooms().map { list -> list.map { it.toDomain() } }
 
@@ -94,31 +101,35 @@ class ChatRepositoryImpl @Inject constructor(
         val run = apiService.createRun(chat.threadId, CreateRunRequest(assistantId = assistantId))
 
         var runStatus = run.status
-        while (runStatus == "queued" || runStatus == "in_progress") {
-            delay(1500)
+        var pollAttempts = 0
+        while ((runStatus == "queued" || runStatus == "in_progress") && pollAttempts < MAX_POLL_ATTEMPTS) {
+            delay(POLL_INTERVAL_MS)
             val updatedRun = apiService.getRun(chat.threadId, run.id)
             runStatus = updatedRun.status
+            pollAttempts++
         }
 
-        if (runStatus == "completed") {
-            val messagesResponse = apiService.getMessages(chat.threadId)
-            val existingLatest = messageDao.getLatestMessage(chat.id)
-            val existingTime = existingLatest?.createdAt ?: 0L
+        if (runStatus != "completed") {
+            error("Run did not complete (status=$runStatus, attempts=$pollAttempts)")
+        }
 
-            val newMessages = messagesResponse.data
-                .filter { it.role == "assistant" && it.createdAt * 1000 > existingTime }
-                .map { msg ->
-                    MessageEntity(
-                        id = msg.id,
-                        chatId = chat.id,
-                        role = msg.role,
-                        content = msg.getTextContent(),
-                        createdAt = msg.createdAt * 1000
-                    )
-                }
-            if (newMessages.isNotEmpty()) {
-                messageDao.insertMessages(newMessages)
+        val messagesResponse = apiService.getMessages(chat.threadId)
+        val existingLatest = messageDao.getLatestMessage(chat.id)
+        val existingTime = existingLatest?.createdAt ?: 0L
+
+        val newMessages = messagesResponse.data
+            .filter { it.role == "assistant" && it.createdAt * 1000 > existingTime }
+            .map { msg ->
+                MessageEntity(
+                    id = msg.id,
+                    chatId = chat.id,
+                    role = msg.role,
+                    content = msg.getTextContent(),
+                    createdAt = msg.createdAt * 1000
+                )
             }
+        if (newMessages.isNotEmpty()) {
+            messageDao.insertMessages(newMessages)
         }
     }
 
