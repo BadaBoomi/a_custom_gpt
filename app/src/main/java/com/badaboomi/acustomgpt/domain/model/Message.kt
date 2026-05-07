@@ -6,4 +6,9 @@ data class Message(
     val role: String,
     val content: String,
     val createdAt: Long
-)
+) {
+    companion object {
+        const val ROLE_USER = "user"
+        const val ROLE_ASSISTANT = "assistant"
+    }
+}

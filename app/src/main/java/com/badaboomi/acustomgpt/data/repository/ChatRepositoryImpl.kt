@@ -11,6 +11,8 @@ import com.badaboomi.acustomgpt.data.remote.dto.CreateMessageRequest
 import com.badaboomi.acustomgpt.data.remote.dto.CreateRunRequest
 import com.badaboomi.acustomgpt.domain.model.Chat
 import com.badaboomi.acustomgpt.domain.model.Message
+import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_ASSISTANT
+import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_USER
 import com.badaboomi.acustomgpt.domain.model.Room
 import com.badaboomi.acustomgpt.domain.repository.ChatRepository
 import kotlinx.coroutines.delay
@@ -33,6 +35,12 @@ class ChatRepositoryImpl @Inject constructor(
         private const val POLL_INTERVAL_MS = 1500L
         /** Maximum number of poll attempts before giving up on a run. */
         private const val MAX_POLL_ATTEMPTS = 40
+
+        private const val RUN_STATUS_QUEUED = "queued"
+        private const val RUN_STATUS_IN_PROGRESS = "in_progress"
+        private const val RUN_STATUS_COMPLETED = "completed"
+        /** OpenAI timestamps are in seconds; local timestamps are in milliseconds. */
+        private const val OPENAI_TIMESTAMP_TO_MS = 1000L
     }
 
     override fun getAllRooms(): Flow<List<Room>> =
@@ -90,7 +98,7 @@ class ChatRepositoryImpl @Inject constructor(
         val userMessageEntity = MessageEntity(
             id = UUID.randomUUID().toString(),
             chatId = chat.id,
-            role = "user",
+            role = ROLE_USER,
             content = userText,
             createdAt = System.currentTimeMillis()
         )
@@ -102,14 +110,14 @@ class ChatRepositoryImpl @Inject constructor(
 
         var runStatus = run.status
         var pollAttempts = 0
-        while ((runStatus == "queued" || runStatus == "in_progress") && pollAttempts < MAX_POLL_ATTEMPTS) {
+        while ((runStatus == RUN_STATUS_QUEUED || runStatus == RUN_STATUS_IN_PROGRESS) && pollAttempts < MAX_POLL_ATTEMPTS) {
             delay(POLL_INTERVAL_MS)
             val updatedRun = apiService.getRun(chat.threadId, run.id)
             runStatus = updatedRun.status
             pollAttempts++
         }
 
-        if (runStatus != "completed") {
+        if (runStatus != RUN_STATUS_COMPLETED) {
             error("Run did not complete (status=$runStatus, attempts=$pollAttempts)")
         }
 
@@ -118,14 +126,14 @@ class ChatRepositoryImpl @Inject constructor(
         val existingTime = existingLatest?.createdAt ?: 0L
 
         val newMessages = messagesResponse.data
-            .filter { it.role == "assistant" && it.createdAt * 1000 > existingTime }
+            .filter { it.role == ROLE_ASSISTANT && it.createdAt * OPENAI_TIMESTAMP_TO_MS > existingTime }
             .map { msg ->
                 MessageEntity(
                     id = msg.id,
                     chatId = chat.id,
                     role = msg.role,
                     content = msg.getTextContent(),
-                    createdAt = msg.createdAt * 1000
+                    createdAt = msg.createdAt * OPENAI_TIMESTAMP_TO_MS
                 )
             }
         if (newMessages.isNotEmpty()) {

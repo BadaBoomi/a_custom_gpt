@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.badaboomi.acustomgpt.domain.model.Message
+import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_USER
 import com.badaboomi.acustomgpt.presentation.ui.theme.AssistantBubble
 import com.badaboomi.acustomgpt.presentation.ui.theme.UserBubble
 import com.badaboomi.acustomgpt.presentation.viewmodel.ConversationViewModel
@@ -133,7 +134,7 @@ fun ConversationScreen(
 
 @Composable
 private fun MessageBubble(message: Message) {
-    val isUser = message.role == "user"
+    val isUser = message.role == ROLE_USER
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
