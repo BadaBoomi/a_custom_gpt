@@ -43,7 +43,7 @@ class SetupViewModel @Inject constructor(
             return
         }
 
-        settingsRepository.saveApiKey(state.apiKey)
+        settingsRepository.saveApiKey(state.apiKey.trim())
         settingsRepository.saveAssistantId(state.assistantId)
         _uiState.value = state.copy(isSetupComplete = true)
     }

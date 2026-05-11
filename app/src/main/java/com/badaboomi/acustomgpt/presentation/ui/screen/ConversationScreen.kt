@@ -135,6 +135,7 @@ fun ConversationScreen(
 @Composable
 private fun MessageBubble(message: Message) {
     val isUser = message.role == ROLE_USER
+    val displayText = parseAntwortField(message.content)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
@@ -154,9 +155,21 @@ private fun MessageBubble(message: Message) {
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Text(
-                text = message.content,
+                text = displayText,
                 color = if (isUser) Color.White else Color.Black
             )
         }
+    }
+}
+
+private fun parseAntwortField(text: String): String {
+    val trimmed = text.trim()
+    return if (trimmed.startsWith("{") && trimmed.endsWith("}") && trimmed.contains("\"antwort\"")) {
+        // Versuche das Feld 'antwort' zu extrahieren
+        val regex = Regex("\"antwort\"\\s*:\\s*\"(.*?)\"")
+        val match = regex.find(trimmed)
+        match?.groups?.get(1)?.value ?: text
+    } else {
+        text
     }
 }
