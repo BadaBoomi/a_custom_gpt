@@ -23,15 +23,17 @@ object NetworkModule {
         OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val apiKey = encryptedPrefsManager.getApiKey() ?: ""
+                val userEmail = encryptedPrefsManager.getUserEmail() ?: ""
                 val request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $apiKey")
                     .addHeader("OpenAI-Beta", "assistants=v2")
+                    .addHeader("user-id", userEmail)
                     .build()
                 chain.proceed(request)
             }
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
-                        else HttpLoggingInterceptor.Level.NONE
+                // Logging von OpenAI-API-Responses komplett deaktivieren
+                level = HttpLoggingInterceptor.Level.NONE
             })
             .build()
 

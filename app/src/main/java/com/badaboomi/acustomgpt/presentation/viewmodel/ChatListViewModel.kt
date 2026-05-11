@@ -44,12 +44,13 @@ class ChatListViewModel @Inject constructor(
         }
     }
 
-    fun createChat(name: String) {
+    fun createChat(name: String, onCreated: (String) -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                chatRepository.createChat(roomId, name)
+                val chat = chatRepository.createChat(roomId, name)
                 _uiState.value = _uiState.value.copy(isLoading = false)
+                onCreated(chat.id)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

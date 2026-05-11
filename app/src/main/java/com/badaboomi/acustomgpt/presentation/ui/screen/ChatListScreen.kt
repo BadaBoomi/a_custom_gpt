@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,7 @@ fun ChatListScreen(
     var chatToRename by remember { mutableStateOf<Chat?>(null) }
     var chatToDelete by remember { mutableStateOf<Chat?>(null) }
     var chatToMove by remember { mutableStateOf<Chat?>(null) }
+    var pendingNavigateToChatId: String? by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -61,14 +63,14 @@ fun ChatListScreen(
                 title = { Text("Chats") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "New Chat")
+                Icon(Icons.Default.Add, contentDescription = "Neuer Chat")
             }
         }
     ) { padding ->
@@ -76,7 +78,7 @@ fun ChatListScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 uiState.chats.isEmpty() -> Text(
-                    "No chats yet. Create one with +",
+                    "Noch keine Chats. Erstelle einen mit +",
                     modifier = Modifier.align(Alignment.Center)
                 )
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -95,7 +97,7 @@ fun ChatListScreen(
             uiState.error?.let { error ->
                 Snackbar(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                    action = { TextButton(onClick = viewModel::clearError) { Text("Dismiss") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text("Schließen") } }
                 ) { Text(error) }
             }
         }
@@ -103,14 +105,31 @@ fun ChatListScreen(
 
     if (showCreateDialog) {
         InputDialog(
-            title = "New Chat",
-            label = "Chat name",
+            title = "Neuer Chat",
+            label = "Chat-Name",
             onConfirm = { name ->
-                viewModel.createChat(name)
+                viewModel.createChat(name) { newChatId ->
+                    pendingNavigateToChatId = newChatId
+                }
                 showCreateDialog = false
             },
             onDismiss = { showCreateDialog = false }
         )
+    }
+
+    // Navigation nach Chat-Erstellung
+    LaunchedEffect(pendingNavigateToChatId) {
+        pendingNavigateToChatId?.let { chatId ->
+            val chat = Chat(
+                id = chatId,
+                roomId = "",
+                name = "",
+                threadId = "",
+                createdAt = 0L
+            )
+            onChatClick(chat)
+            pendingNavigateToChatId = null
+        }
     }
 
     chatToRename?.let { chat ->
@@ -163,13 +182,13 @@ private fun ChatListItem(
         trailingContent = {
             Row {
                 IconButton(onClick = onRename) {
-                    Icon(Icons.Default.Edit, contentDescription = "Rename")
+                    Icon(Icons.Default.Edit, contentDescription = "Umbenennen")
                 }
                 IconButton(onClick = onMove) {
-                    Icon(Icons.Default.ArrowForward, contentDescription = "Move to Room")
+                    Icon(Icons.Default.ArrowForward, contentDescription = "In Raum verschieben")
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = "Löschen")
                 }
             }
         },
@@ -187,7 +206,7 @@ fun MoveToRoomDialog(
     var selectedRoomId by remember { mutableStateOf(currentRoomId) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Move to Room") },
+        title = { Text("In Raum verschieben") },
         text = {
             LazyColumn {
                 items(rooms) { room ->
@@ -210,10 +229,10 @@ fun MoveToRoomDialog(
             TextButton(
                 onClick = { onConfirm(selectedRoomId) },
                 enabled = selectedRoomId != currentRoomId
-            ) { Text("Move") }
+            ) { Text("Verschieben") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
         }
     )
 }

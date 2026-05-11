@@ -21,13 +21,17 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
+import com.badaboomi.acustomgpt.tools.ToolConfig
+import com.google.gson.Gson
 
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val roomDao: RoomDao,
     private val chatDao: ChatDao,
     private val messageDao: MessageDao,
-    private val apiService: OpenAiApiService
+    private val apiService: OpenAiApiService,
+    private val userRepository: com.badaboomi.acustomgpt.domain.repository.UserRepository
 ) : ChatRepository {
 
     companion object {
@@ -104,9 +108,20 @@ class ChatRepositoryImpl @Inject constructor(
         )
         messageDao.insertMessage(userMessageEntity)
 
-        apiService.addMessage(chat.threadId, CreateMessageRequest(content = userText))
 
-        val run = apiService.createRun(chat.threadId, CreateRunRequest(assistantId = assistantId))
+        val userId = userRepository.getUserEmail()?.takeIf { it.isNotBlank() } ?: ""
+        val contentWithUser = "[user-id: $userId] $userText"
+        val messagePayload = CreateMessageRequest(content = contentWithUser)
+        if (ToolConfig.logModelPayload) {
+            Log.d("ModelPayload", "addMessage: " + Gson().toJson(messagePayload))
+        }
+        apiService.addMessage(chat.threadId, messagePayload)
+
+        val runPayload = CreateRunRequest(assistantId = assistantId)
+        if (ToolConfig.logModelPayload) {
+            Log.d("ModelPayload", "createRun: " + Gson().toJson(runPayload))
+        }
+        val run = apiService.createRun(chat.threadId, runPayload)
 
         var runStatus = run.status
         var pollAttempts = 0

@@ -1,4 +1,22 @@
+
 package com.badaboomi.acustomgpt.presentation.ui.screen
+import androidx.compose.material.icons.filled.Send
+
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonElement
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,16 +36,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +52,32 @@ import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_USER
 import com.badaboomi.acustomgpt.presentation.ui.theme.AssistantBubble
 import com.badaboomi.acustomgpt.presentation.ui.theme.UserBubble
 import com.badaboomi.acustomgpt.presentation.viewmodel.ConversationViewModel
+
+// Extrahiere alle Werte aus JSON, falls vorhanden, sonst gib den Text zurück
+private fun extractJsonValuesOrText(text: String): String {
+    val trimmed = text.trim()
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        return try {
+            val json = kotlinx.serialization.json.Json.parseToJsonElement(trimmed)
+            fun extractAllValues(element: kotlinx.serialization.json.JsonElement): List<String> = when {
+                element is kotlinx.serialization.json.JsonPrimitive && !element.isString -> listOf(element.toString())
+                element is kotlinx.serialization.json.JsonPrimitive -> listOf(element.content)
+                element is kotlinx.serialization.json.JsonObject -> element.values.flatMap { extractAllValues(it) }
+                element is kotlinx.serialization.json.JsonArray -> element.flatMap { extractAllValues(it) }
+                else -> emptyList()
+            }
+            val values = extractAllValues(json)
+            if (values.isNotEmpty()) values.joinToString("\n") else text
+        } catch (e: Exception) {
+            // Fallback: Versuche einfache Regex für Werte
+            val regex = Regex(":\\s*\"(.*?)\"")
+            val matches = regex.findAll(trimmed).map { it.groupValues[1] }.toList()
+            if (matches.isNotEmpty()) matches.joinToString("\n") else text
+        }
+    }
+    return text
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,10 +97,10 @@ fun ConversationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.chat?.name ?: "Conversation") },
+                title = { Text(uiState.chat?.name ?: "Konversation") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                     }
                 }
             )
@@ -85,7 +120,7 @@ fun ConversationScreen(
                         value = uiState.inputText,
                         onValueChange = viewModel::onInputChange,
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Type a message...") },
+                        placeholder = { Text("Nachricht eingeben…") },
                         maxLines = 4,
                         enabled = !uiState.isLoading
                     )
@@ -94,7 +129,7 @@ fun ConversationScreen(
                         onClick = viewModel::sendMessage,
                         enabled = !uiState.isLoading && uiState.inputText.isNotBlank()
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "Send")
+                        Icon(Icons.Default.Send, contentDescription = "Senden")
                     }
                 }
             }
@@ -104,7 +139,7 @@ fun ConversationScreen(
             when {
                 uiState.messages.isEmpty() && !uiState.isLoading -> {
                     Text(
-                        "No messages yet. Start the conversation!",
+                        "Noch keine Nachrichten. Starte die Unterhaltung!",
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -125,7 +160,7 @@ fun ConversationScreen(
             uiState.error?.let { error ->
                 Snackbar(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                    action = { TextButton(onClick = viewModel::clearError) { Text("Dismiss") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text("Schließen") } }
                 ) { Text(error) }
             }
         }
@@ -135,7 +170,7 @@ fun ConversationScreen(
 @Composable
 private fun MessageBubble(message: Message) {
     val isUser = message.role == ROLE_USER
-    val displayText = parseAntwortField(message.content)
+    val displayText = extractJsonValuesOrText(message.content)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
@@ -164,11 +199,19 @@ private fun MessageBubble(message: Message) {
 
 private fun parseAntwortField(text: String): String {
     val trimmed = text.trim()
-    return if (trimmed.startsWith("{") && trimmed.endsWith("}") && trimmed.contains("\"antwort\"")) {
-        // Versuche das Feld 'antwort' zu extrahieren
-        val regex = Regex("\"antwort\"\\s*:\\s*\"(.*?)\"")
-        val match = regex.find(trimmed)
-        match?.groups?.get(1)?.value ?: text
+    // Versuche JSON zu erkennen und das Feld 'antwort' zu extrahieren
+    return if ((trimmed.startsWith("{") && trimmed.endsWith("}")) && trimmed.contains("\"antwort\"")) {
+        try {
+            // Nutze kotlinx.serialization für robustes Parsing
+            val json = kotlinx.serialization.json.Json.parseToJsonElement(trimmed).jsonObject
+            val antwort = json["antwort"]?.jsonPrimitive?.content
+            antwort ?: text
+        } catch (e: Exception) {
+            // Fallback auf Regex falls JSON-Parsing fehlschlägt
+            val regex = Regex("\"antwort\"\\s*:\\s*\"(.*?)\"")
+            val match = regex.find(trimmed)
+            match?.groups?.get(1)?.value ?: text
+        }
     } else {
         text
     }

@@ -55,17 +55,17 @@ fun RoomListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Rooms") },
+                title = { Text("Räume") },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = "Einstellungen")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create Room")
+                Icon(Icons.Default.Add, contentDescription = "Raum erstellen")
             }
         }
     ) { padding ->
@@ -146,10 +146,10 @@ private fun RoomListItem(
         trailingContent = {
             Row {
                 IconButton(onClick = onRename) {
-                    Icon(Icons.Default.Edit, contentDescription = "Rename")
+                    Icon(Icons.Default.Edit, contentDescription = "Umbenennen")
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = "Löschen")
                 }
             }
         },

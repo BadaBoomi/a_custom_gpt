@@ -35,12 +35,12 @@ fun SetupScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Welcome to ACustomGPT",
+            text = "Willkommen bei ACustomGPT",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
-            text = "Please enter your OpenAI credentials to get started.",
+            text = "Bitte geben Sie Ihre OpenAI-Anmeldeinformationen ein, um zu beginnen.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(bottom = 32.dp)
         )
@@ -48,7 +48,7 @@ fun SetupScreen(
         OutlinedTextField(
             value = uiState.apiKey,
             onValueChange = onApiKeyChange,
-            label = { Text("API Key") },
+            label = { Text("API-Schlüssel") },
             placeholder = { Text("sk-...") },
             isError = uiState.apiKeyError != null,
             supportingText = uiState.apiKeyError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -60,9 +60,17 @@ fun SetupScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
+            value = uiState.userId,
+            onValueChange = {},
+            label = { Text("User-ID (E-Mail)") },
+            enabled = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
             value = uiState.assistantId,
             onValueChange = onAssistantIdChange,
-            label = { Text("Assistant ID") },
+            label = { Text("Assistant-ID") },
             placeholder = { Text("asst_...") },
             isError = uiState.assistantIdError != null,
             supportingText = uiState.assistantIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -75,7 +83,7 @@ fun SetupScreen(
             onClick = onSave,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Save & Continue")
+            Text("Speichern & Weiter")
         }
     }
 }

@@ -13,6 +13,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AppModule {
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(impl: com.badaboomi.acustomgpt.data.repository.UserRepositoryImpl): com.badaboomi.acustomgpt.domain.repository.UserRepository
 
     @Binds
     @Singleton
@@ -21,4 +24,8 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindToolRepository(impl: com.badaboomi.acustomgpt.data.repository.ToolRepositoryImpl): com.badaboomi.acustomgpt.domain.repository.ToolRepository
 }

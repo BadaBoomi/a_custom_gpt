@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -63,4 +64,6 @@ dependencies {
     implementation(libs.security.crypto)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Google Sign-In für modernes Account-Handling
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 }

@@ -11,6 +11,7 @@ import javax.inject.Inject
 data class SettingsUiState(
     val apiKey: String = "",
     val assistantId: String = "",
+    val userId: String = "",
     val apiKeyError: String? = null,
     val assistantIdError: String? = null,
     val isSaved: Boolean = false
@@ -18,7 +19,8 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val userRepository: com.badaboomi.acustomgpt.domain.repository.UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -27,7 +29,8 @@ class SettingsViewModel @Inject constructor(
     init {
         _uiState.value = SettingsUiState(
             apiKey = settingsRepository.getApiKey() ?: "",
-            assistantId = settingsRepository.getAssistantId() ?: ""
+            assistantId = settingsRepository.getAssistantId() ?: "",
+            userId = userRepository.getUserEmail() ?: ""
         )
     }
 

@@ -38,10 +38,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Einstellungen") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                     }
                 }
             )
@@ -57,7 +57,7 @@ fun SettingsScreen(
             OutlinedTextField(
                 value = uiState.apiKey,
                 onValueChange = viewModel::onApiKeyChange,
-                label = { Text("API Key") },
+                label = { Text("API-Schlüssel") },
                 placeholder = { Text("sk-...") },
                 isError = uiState.apiKeyError != null,
                 supportingText = uiState.apiKeyError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -67,9 +67,17 @@ fun SettingsScreen(
             )
 
             OutlinedTextField(
+                value = uiState.userId,
+                onValueChange = {},
+                label = { Text("User-ID (E-Mail)") },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
                 value = uiState.assistantId,
                 onValueChange = viewModel::onAssistantIdChange,
-                label = { Text("Assistant ID") },
+                label = { Text("Assistant-ID") },
                 placeholder = { Text("asst_...") },
                 isError = uiState.assistantIdError != null,
                 supportingText = uiState.assistantIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -80,12 +88,12 @@ fun SettingsScreen(
                 onClick = viewModel::onSave,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save")
+                Text("Speichern")
             }
 
             if (uiState.isSaved) {
                 Text(
-                    "Settings saved successfully!",
+                    "Einstellungen erfolgreich gespeichert!",
                     color = MaterialTheme.colorScheme.primary
                 )
             }
