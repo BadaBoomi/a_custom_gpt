@@ -73,7 +73,7 @@ fun RoomListScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 uiState.rooms.isEmpty() -> Text(
-                    "No rooms yet. Create one with +",
+                    "Noch keine Räume. Erstelle einen mit +",
                     modifier = Modifier.align(Alignment.Center)
                 )
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -91,7 +91,7 @@ fun RoomListScreen(
             uiState.error?.let { error ->
                 Snackbar(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                    action = { TextButton(onClick = viewModel::clearError) { Text("Dismiss") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text("Schließen") } }
                 ) { Text(error) }
             }
         }
@@ -99,8 +99,8 @@ fun RoomListScreen(
 
     if (showCreateDialog) {
         InputDialog(
-            title = "New Room",
-            label = "Room name",
+            title = "Neuer Raum",
+            label = "Raumname",
             onConfirm = { name ->
                 viewModel.createRoom(name)
                 showCreateDialog = false
@@ -111,8 +111,8 @@ fun RoomListScreen(
 
     roomToRename?.let { room ->
         InputDialog(
-            title = "Rename Room",
-            label = "New name",
+            title = "Raum umbenennen",
+            label = "Neuer Name",
             initialValue = room.name,
             onConfirm = { newName ->
                 viewModel.renameRoom(room, newName)
@@ -181,10 +181,10 @@ fun InputDialog(
             TextButton(
                 onClick = { if (text.isNotBlank()) onConfirm(text) },
                 enabled = text.isNotBlank()
-            ) { Text("OK") }
+            ) { Text("Bestätigen") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
         }
     )
 }
@@ -197,13 +197,13 @@ fun ConfirmDeleteDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete") },
-        text = { Text("Delete \"$itemName\"? This cannot be undone.") },
+        title = { Text("Löschen") },
+        text = { Text("\"$itemName\" löschen? Dies kann nicht rückgängig gemacht werden.") },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onConfirm) { Text("Löschen", color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
         }
     )
 }

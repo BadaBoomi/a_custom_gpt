@@ -1,6 +1,4 @@
 package com.badaboomi.acustomgpt.presentation.navigation
-
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,11 +22,8 @@ sealed class Screen(val route: String) {
     object ChatList : Screen("chat_list/{roomId}") {
         fun createRoute(roomId: String) = "chat_list/$roomId"
     }
-    object Conversation : Screen("conversation/{chatId}?initialPrompt={initialPrompt}") {
-        fun createRoute(chatId: String, initialPrompt: String? = null): String {
-            val encodedPrompt = Uri.encode(initialPrompt ?: "")
-            return "conversation/$chatId?initialPrompt=$encodedPrompt"
-        }
+    object Conversation : Screen("conversation/{chatId}") {
+        fun createRoute(chatId: String) = "conversation/$chatId"
     }
     object Settings : Screen("settings")
 }
@@ -69,8 +64,8 @@ fun AppNavigation(settingsRepository: SettingsRepository) {
             arguments = listOf(navArgument("roomId") { type = NavType.StringType })
         ) {
             ChatListScreen(
-                onChatClick = { chat, initialPrompt ->
-                    navController.navigate(Screen.Conversation.createRoute(chat.id, initialPrompt))
+                onChatClick = { chat ->
+                    navController.navigate(Screen.Conversation.createRoute(chat.id))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -78,14 +73,7 @@ fun AppNavigation(settingsRepository: SettingsRepository) {
 
         composable(
             route = Screen.Conversation.route,
-            arguments = listOf(
-                navArgument("chatId") { type = NavType.StringType },
-                navArgument("initialPrompt") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                    nullable = true
-                }
-            )
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
         ) {
             ConversationScreen(
                 onBack = { navController.popBackStack() }
