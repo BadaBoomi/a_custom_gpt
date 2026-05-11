@@ -14,4 +14,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override fun getAssistantId(): String? = encryptedPrefsManager.getAssistantId()
     override fun saveAssistantId(assistantId: String) = encryptedPrefsManager.saveAssistantId(assistantId)
     override fun isSetupComplete(): Boolean = encryptedPrefsManager.isSetupComplete()
+
+    override fun saveStarters(starters: String) = encryptedPrefsManager.saveStarters(starters)
+    override fun getStarters(): String? = encryptedPrefsManager.getStarters()
 }

@@ -1,18 +1,23 @@
 package com.badaboomi.acustomgpt.tools
 
+import com.badaboomi.acustomgpt.BuildConfig
 import java.io.File
 
 object ToolConfig {
-            val logLevel: String by lazy {
-                env["LOG_LEVEL"] ?: "INFO"
-            }
-        val logModelPayload: Boolean by lazy {
-            env["LOG_MODEL_PAYLOAD"]?.equals("true", ignoreCase = true) == true
-        }
+    val logLevel: String by lazy {
+        BuildConfig.LOG_LEVEL.ifBlank { env["LOG_LEVEL"] ?: "INFO" }
+    }
+
+    val logModelPayload: Boolean by lazy {
+        BuildConfig.LOG_MODEL_PAYLOAD ||
+            (env["LOG_MODEL_PAYLOAD"]?.equals("true", ignoreCase = true) == true)
+    }
+
     private val env: Map<String, String> by lazy { loadEnv() }
 
     val enabledTools: List<String> by lazy {
-        env["TOOLS"]?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+        val toolsRaw = if (BuildConfig.TOOLS.isNotBlank()) BuildConfig.TOOLS else (env["TOOLS"] ?: "")
+        toolsRaw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     private fun loadEnv(): Map<String, String> {

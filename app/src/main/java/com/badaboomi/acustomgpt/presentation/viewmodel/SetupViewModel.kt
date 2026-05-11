@@ -29,11 +29,13 @@ class SetupViewModel @Inject constructor(
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
     fun onApiKeyChange(value: String) {
-        _uiState.value = _uiState.value.copy(apiKey = value, apiKeyError = null)
+        val cleaned = value.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        _uiState.value = _uiState.value.copy(apiKey = cleaned, apiKeyError = null)
     }
 
     fun onAssistantIdChange(value: String) {
-        _uiState.value = _uiState.value.copy(assistantId = value, assistantIdError = null)
+        val cleaned = value.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        _uiState.value = _uiState.value.copy(assistantId = cleaned, assistantIdError = null)
     }
 
     fun onSave() {
@@ -47,8 +49,10 @@ class SetupViewModel @Inject constructor(
             return
         }
 
-        settingsRepository.saveApiKey(state.apiKey.trim())
-        settingsRepository.saveAssistantId(state.assistantId)
+        val cleanedApiKey = state.apiKey.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        val cleanedAssistantId = state.assistantId.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        settingsRepository.saveApiKey(cleanedApiKey)
+        settingsRepository.saveAssistantId(cleanedAssistantId)
         _uiState.value = state.copy(isSetupComplete = true)
     }
 }

@@ -83,7 +83,7 @@ fun SetupScreen(
             onClick = onSave,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Speichern & Weiter")
+            Text("Aktualisieren")
         }
     }
 }

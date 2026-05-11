@@ -38,9 +38,13 @@ class EncryptedPrefsManager @Inject constructor(
     fun saveUserEmail(email: String) = prefs.edit().putString(KEY_USER_EMAIL, email).apply()
     fun getUserEmail(): String? = prefs.getString(KEY_USER_EMAIL, null)
 
+    fun saveStarters(starters: String) = prefs.edit().putString(KEY_STARTERS, starters).apply()
+    fun getStarters(): String? = prefs.getString(KEY_STARTERS, null)
+
     companion object {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_ASSISTANT_ID = "assistant_id"
         private const val KEY_USER_EMAIL = "user_email"
+        private const val KEY_STARTERS = "starters"
     }
 }

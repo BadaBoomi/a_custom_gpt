@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.badaboomi.acustomgpt.domain.model.Chat
 import com.badaboomi.acustomgpt.domain.model.Room
 import com.badaboomi.acustomgpt.domain.repository.ChatRepository
+import com.badaboomi.acustomgpt.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ data class ChatListUiState(
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
+    private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -90,4 +92,6 @@ class ChatListViewModel @Inject constructor(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
+
+    fun getStartersMarkdown(): String = settingsRepository.getStarters().orEmpty()
 }

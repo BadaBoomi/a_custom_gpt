@@ -1,3 +1,4 @@
+
 package com.badaboomi.acustomgpt.presentation.ui.screen
 
 import androidx.compose.foundation.clickable
@@ -27,7 +28,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,24 +47,39 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.badaboomi.acustomgpt.domain.model.Chat
 import com.badaboomi.acustomgpt.domain.model.Room
 import com.badaboomi.acustomgpt.presentation.viewmodel.ChatListViewModel
 
+// Hilfsfunktion zum Parsen der Starters-Markdown-Tabelle
+private fun parseStartersTable(md: String): List<Pair<String, String>> {
+    return md.lines()
+        .drop(2) // Kopfzeile und Trennzeile überspringen
+        .mapNotNull {
+            val cols = it.split("|").map { s -> s.trim() }.filter { s -> s.isNotEmpty() }
+            if (cols.size >= 2) Pair(cols[0], cols[1]) else null
+        }
+}
+
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    onChatClick: (Chat) -> Unit,
+    onChatClick: (Chat, String?) -> Unit,
     onBack: () -> Unit,
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showStarterDialog by remember { mutableStateOf(false) }
+    var starterPrompts by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var selectedStarter by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var promptText by remember { mutableStateOf("") }
     var chatToRename by remember { mutableStateOf<Chat?>(null) }
     var chatToDelete by remember { mutableStateOf<Chat?>(null) }
     var chatToMove by remember { mutableStateOf<Chat?>(null) }
-    var pendingNavigateToChatId: String? by remember { mutableStateOf<String?>(null) }
+    var pendingNavigation: Pair<String, String?>? by remember { mutableStateOf(null) }
 
     Scaffold(
         topBar = {
@@ -69,7 +93,11 @@ fun ChatListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(onClick = {
+                val startersMd = viewModel.getStartersMarkdown()
+                starterPrompts = parseStartersTable(startersMd)
+                showStarterDialog = true
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Neuer Chat")
             }
         }
@@ -85,7 +113,7 @@ fun ChatListScreen(
                     items(uiState.chats) { chat ->
                         ChatListItem(
                             chat = chat,
-                            onClick = { onChatClick(chat) },
+                            onClick = { onChatClick(chat, null) },
                             onRename = { chatToRename = chat },
                             onDelete = { chatToDelete = chat },
                             onMove = { chatToMove = chat }
@@ -103,23 +131,83 @@ fun ChatListScreen(
         }
     }
 
+    if (showStarterDialog) {
+        AlertDialog(
+            onDismissRequest = { showStarterDialog = false },
+            title = { Text("Starte mit Vorlage") },
+            text = {
+                LazyColumn {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedStarter = "Ohne Vorlage" to ""
+                                    promptText = ""
+                                    showStarterDialog = false
+                                    showCreateDialog = true
+                                }
+                                .padding(8.dp)
+                                .background(
+                                    if (selectedStarter?.first == "Ohne Vorlage") Color.LightGray else Color.Transparent
+                                ),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Ohne Vorlage", fontWeight = FontWeight.Bold)
+                            Text("", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+
+                    items(starterPrompts) { (zweck, prompt) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedStarter = zweck to prompt
+                                    promptText = prompt
+                                    showStarterDialog = false
+                                    showCreateDialog = true
+                                }
+                                .padding(8.dp)
+                                .background(if (selectedStarter?.first == zweck) Color.LightGray else Color.Transparent),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(zweck, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(prompt, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showStarterDialog = false }) { Text("Abbrechen") }
+            }
+        )
+    }
+
     if (showCreateDialog) {
-        InputDialog(
+        InputDialogWithPrompt(
             title = "Neuer Chat",
             label = "Chat-Name",
+            promptLabel = "Ausgewählter Prompt",
+            initialPrompt = promptText,
             onConfirm = { name ->
+                val selectedPrompt = promptText.ifBlank { null }
                 viewModel.createChat(name) { newChatId ->
-                    pendingNavigateToChatId = newChatId
+                    pendingNavigation = newChatId to selectedPrompt
                 }
                 showCreateDialog = false
+                promptText = ""
             },
-            onDismiss = { showCreateDialog = false }
+            onDismiss = {
+                showCreateDialog = false
+                promptText = ""
+            }
         )
     }
 
     // Navigation nach Chat-Erstellung
-    LaunchedEffect(pendingNavigateToChatId) {
-        pendingNavigateToChatId?.let { chatId ->
+    LaunchedEffect(pendingNavigation) {
+        pendingNavigation?.let { (chatId, initialPrompt) ->
             val chat = Chat(
                 id = chatId,
                 roomId = "",
@@ -127,8 +215,8 @@ fun ChatListScreen(
                 threadId = "",
                 createdAt = 0L
             )
-            onChatClick(chat)
-            pendingNavigateToChatId = null
+            onChatClick(chat, initialPrompt)
+            pendingNavigation = null
         }
     }
 
@@ -167,6 +255,49 @@ fun ChatListScreen(
             onDismiss = { chatToMove = null }
         )
     }
+}
+
+// Dialog mit Chat-Name und editierbarem Prompt
+@Composable
+private fun InputDialogWithPrompt(
+    title: String,
+    label: String,
+    promptLabel: String,
+    initialPrompt: String = "",
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(label) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = initialPrompt,
+                    onValueChange = {},
+                    label = { Text(promptLabel) },
+                    maxLines = 3,
+                    readOnly = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (name.isNotBlank()) onConfirm(name) },
+                enabled = name.isNotBlank()
+            ) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Abbrechen") }
+        }
+    )
 }
 
 @Composable

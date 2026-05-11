@@ -6,4 +6,6 @@ interface SettingsRepository {
     fun getAssistantId(): String?
     fun saveAssistantId(assistantId: String)
     fun isSetupComplete(): Boolean
+    fun saveStarters(starters: String)
+    fun getStarters(): String?
 }

@@ -35,11 +35,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onApiKeyChange(value: String) {
-        _uiState.value = _uiState.value.copy(apiKey = value, apiKeyError = null, isSaved = false)
+        val cleaned = value.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        _uiState.value = _uiState.value.copy(apiKey = cleaned, apiKeyError = null, isSaved = false)
     }
 
     fun onAssistantIdChange(value: String) {
-        _uiState.value = _uiState.value.copy(assistantId = value, assistantIdError = null, isSaved = false)
+        val cleaned = value.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        _uiState.value = _uiState.value.copy(assistantId = cleaned, assistantIdError = null, isSaved = false)
     }
 
     fun onSave() {
@@ -52,8 +54,27 @@ class SettingsViewModel @Inject constructor(
             return
         }
 
-        settingsRepository.saveApiKey(state.apiKey.trim())
-        settingsRepository.saveAssistantId(state.assistantId)
+        val cleanedApiKey = state.apiKey.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        val cleanedAssistantId = state.assistantId.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        settingsRepository.saveApiKey(cleanedApiKey)
+        settingsRepository.saveAssistantId(cleanedAssistantId)
+
+        // TODO: GET_CONFIGURATION vom Assistenten holen, hier Platzhalter: Starters aus Datei lesen
+        // In Produktion: Netzwerkaufruf, hier Demo: Lese aus assets/starters.md
+        try {
+            val starters = loadStartersFromAssets()
+            settingsRepository.saveStarters(starters)
+        } catch (e: Exception) {
+            // Fehlerbehandlung, falls Datei nicht gefunden
+        }
+
         _uiState.value = state.copy(isSaved = true)
+    }
+
+    // Platzhalter: Lese Starters aus assets/starters.md (in Produktion: aus Netzwerk)
+    private fun loadStartersFromAssets(): String {
+        // Diese Methode muss an die tatsächliche Asset- oder Dateistruktur angepasst werden
+        // Hier: Rückgabe eines statischen Beispiels
+        return "|Zweck|Prompt|\n|--|--|\n|Frage nach einer berühmten Persönlichkeit| Wer war eigentlich |\n|Rechenaufgabe| Wieviel ist |\n|Humor| Erzähle einen Witz über |"
     }
 }

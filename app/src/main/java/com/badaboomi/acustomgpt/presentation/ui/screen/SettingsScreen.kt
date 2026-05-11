@@ -88,7 +88,7 @@ fun SettingsScreen(
                 onClick = viewModel::onSave,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Speichern")
+                Text("Aktualisieren")
             }
 
             if (uiState.isSaved) {

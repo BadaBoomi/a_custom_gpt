@@ -30,8 +30,14 @@ class ConversationViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val chatId: String = checkNotNull(savedStateHandle["chatId"])
+    private val initialPrompt: String = savedStateHandle["initialPrompt"] ?: ""
 
-    private val _uiState = MutableStateFlow(ConversationUiState(isLoading = true))
+    private val _uiState = MutableStateFlow(
+        ConversationUiState(
+            isLoading = true,
+            inputText = initialPrompt
+        )
+    )
     val uiState: StateFlow<ConversationUiState> = _uiState.asStateFlow()
 
     init {

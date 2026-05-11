@@ -24,6 +24,7 @@ import javax.inject.Singleton
 import android.util.Log
 import com.badaboomi.acustomgpt.tools.ToolConfig
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
@@ -137,23 +138,104 @@ class ChatRepositoryImpl @Inject constructor(
         }
 
         val messagesResponse = apiService.getMessages(chat.threadId)
+        if (ToolConfig.logModelPayload) {
+            val assistantRawMessages = messagesResponse.data.filter { it.role == ROLE_ASSISTANT }
+            val assistantTextMessages = assistantRawMessages.map { it.getTextContent() }
+            Log.d("ModelPayload", "assistantResponse.raw: " + Gson().toJson(assistantRawMessages))
+            Log.d("ModelPayload", "assistantResponse.text: " + Gson().toJson(assistantTextMessages))
+        }
         val existingLatest = messageDao.getLatestMessage(chat.id)
         val existingTime = existingLatest?.createdAt ?: 0L
 
         val newMessages = messagesResponse.data
             .filter { it.role == ROLE_ASSISTANT && it.createdAt * OPENAI_TIMESTAMP_TO_MS > existingTime }
-            .map { msg ->
-                MessageEntity(
-                    id = msg.id,
-                    chatId = chat.id,
-                    role = msg.role,
-                    content = msg.getTextContent(),
-                    createdAt = msg.createdAt * OPENAI_TIMESTAMP_TO_MS
-                )
+            .flatMap { msg ->
+                val parts = splitAssistantResponse(msg.getTextContent())
+                parts.mapIndexed { index, part ->
+                    MessageEntity(
+                        id = if (index == 0) msg.id else "${msg.id}_$index",
+                        chatId = chat.id,
+                        role = msg.role,
+                        content = part,
+                        createdAt = (msg.createdAt * OPENAI_TIMESTAMP_TO_MS) + index
+                    )
+                }
             }
         if (newMessages.isNotEmpty()) {
             messageDao.insertMessages(newMessages)
         }
+    }
+
+    /**
+     * Splitte Antworten mit führendem JSON-Objekt wie {"message":"..."} in
+     * 1) Begrüßungstext aus "message" und 2) den restlichen Freitext.
+     */
+    private fun splitAssistantResponse(text: String): List<String> {
+        val trimmed = text.trim()
+        val leadingJson = extractLeadingJsonObject(trimmed) ?: return listOf(text)
+        val (jsonPart, remainingText) = leadingJson
+
+        val messageFromJson = try {
+            val jsonElement = JsonParser.parseString(jsonPart)
+            if (jsonElement.isJsonObject) {
+                val message = jsonElement.asJsonObject.get("message")
+                if (message != null && message.isJsonPrimitive && message.asJsonPrimitive.isString) {
+                    message.asString.trim()
+                } else {
+                    ""
+                }
+            } else {
+                ""
+            }
+        } catch (_: Exception) {
+            ""
+        }
+
+        if (messageFromJson.isBlank()) {
+            return listOf(text)
+        }
+
+        val result = mutableListOf<String>()
+        result.add(messageFromJson)
+        if (remainingText.isNotBlank()) {
+            result.add(remainingText)
+        }
+        return result
+    }
+
+    /**
+     * Extrahiert ein führendes JSON-Objekt inkl. Resttext durch einfache
+     * Klammerzählung (beachtet Strings/Escapes).
+     */
+    private fun extractLeadingJsonObject(text: String): Pair<String, String>? {
+        val start = text.indexOfFirst { !it.isWhitespace() }
+        if (start == -1 || text[start] != '{') return null
+
+        var depth = 0
+        var inString = false
+        var escaped = false
+
+        for (i in start until text.length) {
+            val ch = text[i]
+            if (escaped) {
+                escaped = false
+                continue
+            }
+            when {
+                ch == '\\' && inString -> escaped = true
+                ch == '"' -> inString = !inString
+                !inString && ch == '{' -> depth++
+                !inString && ch == '}' -> {
+                    depth--
+                    if (depth == 0) {
+                        val jsonPart = text.substring(start, i + 1)
+                        val remaining = text.substring(i + 1).trim()
+                        return jsonPart to remaining
+                    }
+                }
+            }
+        }
+        return null
     }
 
     private fun RoomEntity.toDomain() = Room(id, name, createdAt)

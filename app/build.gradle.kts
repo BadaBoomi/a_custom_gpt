@@ -6,6 +6,30 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+fun loadDotEnv(file: java.io.File): Map<String, String> {
+    if (!file.exists()) return emptyMap()
+    return file.readLines()
+        .mapNotNull { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith("#") || !trimmed.contains("=")) {
+                null
+            } else {
+                val (key, value) = trimmed.split("=", limit = 2)
+                key.trim() to value.trim()
+            }
+        }
+        .toMap()
+}
+
+fun escapeForBuildConfig(value: String): String = value
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
+val env = loadDotEnv(rootProject.file(".env"))
+val envLogModelPayload = env["LOG_MODEL_PAYLOAD"]?.equals("true", ignoreCase = true) == true
+val envLogLevel = env["LOG_LEVEL"] ?: "INFO"
+val envTools = env["TOOLS"] ?: ""
+
 android {
     namespace = "com.badaboomi.acustomgpt"
     compileSdk = 34
@@ -16,6 +40,10 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("boolean", "LOG_MODEL_PAYLOAD", envLogModelPayload.toString())
+        buildConfigField("String", "LOG_LEVEL", "\"${escapeForBuildConfig(envLogLevel)}\"")
+        buildConfigField("String", "TOOLS", "\"${escapeForBuildConfig(envTools)}\"")
     }
 
     buildTypes {
