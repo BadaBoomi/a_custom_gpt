@@ -75,12 +75,21 @@ fun SettingsScreen(
             )
 
             OutlinedTextField(
-                value = uiState.assistantId,
-                onValueChange = viewModel::onAssistantIdChange,
-                label = { Text("Assistant-ID") },
-                placeholder = { Text("asst_...") },
-                isError = uiState.assistantIdError != null,
-                supportingText = uiState.assistantIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                value = uiState.promptId,
+                onValueChange = viewModel::onPromptIdChange,
+                label = { Text("Prompt-ID") },
+                placeholder = { Text("prompt_...") },
+                isError = uiState.promptIdError != null,
+                supportingText = uiState.promptIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = uiState.vectorStoreIds,
+                onValueChange = viewModel::onVectorStoreIdsChange,
+                label = { Text("Vector-Store-IDs") },
+                placeholder = { Text("vs_abc123, vs_def456") },
+                supportingText = { Text("Kommagetrennte IDs (optional)") },
                 modifier = Modifier.fillMaxWidth()
             )
 

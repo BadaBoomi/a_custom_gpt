@@ -26,12 +26,12 @@ class EncryptedPrefsManager @Inject constructor(
     fun saveApiKey(apiKey: String) = prefs.edit().putString(KEY_API_KEY, apiKey).apply()
     fun getApiKey(): String? = prefs.getString(KEY_API_KEY, null)
 
-    fun saveAssistantId(assistantId: String) = prefs.edit().putString(KEY_ASSISTANT_ID, assistantId).apply()
-    fun getAssistantId(): String? = prefs.getString(KEY_ASSISTANT_ID, null)
+    fun savePromptId(promptId: String) = prefs.edit().putString(KEY_PROMPT_ID, promptId).apply()
+    fun getPromptId(): String? = prefs.getString(KEY_PROMPT_ID, null)
 
     fun isSetupComplete(): Boolean {
         val key = getApiKey()
-        val id = getAssistantId()
+        val id = getPromptId()
         return !key.isNullOrBlank() && !id.isNullOrBlank()
     }
 
@@ -41,10 +41,14 @@ class EncryptedPrefsManager @Inject constructor(
     fun saveStarters(starters: String) = prefs.edit().putString(KEY_STARTERS, starters).apply()
     fun getStarters(): String? = prefs.getString(KEY_STARTERS, null)
 
+    fun saveVectorStoreIds(ids: String) = prefs.edit().putString(KEY_VECTOR_STORE_IDS, ids).apply()
+    fun getVectorStoreIds(): String? = prefs.getString(KEY_VECTOR_STORE_IDS, null)
+
     companion object {
         private const val KEY_API_KEY = "api_key"
-        private const val KEY_ASSISTANT_ID = "assistant_id"
+        private const val KEY_PROMPT_ID = "prompt_id"
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_STARTERS = "starters"
+        private const val KEY_VECTOR_STORE_IDS = "vector_store_ids"
     }
 }

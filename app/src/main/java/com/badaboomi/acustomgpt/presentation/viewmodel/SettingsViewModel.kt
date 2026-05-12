@@ -10,10 +10,11 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val apiKey: String = "",
-    val assistantId: String = "",
+    val promptId: String = "",
+    val vectorStoreIds: String = "",
     val userId: String = "",
     val apiKeyError: String? = null,
-    val assistantIdError: String? = null,
+    val promptIdError: String? = null,
     val isSaved: Boolean = false
 )
 
@@ -29,7 +30,8 @@ class SettingsViewModel @Inject constructor(
     init {
         _uiState.value = SettingsUiState(
             apiKey = settingsRepository.getApiKey() ?: "",
-            assistantId = settingsRepository.getAssistantId() ?: "",
+            promptId = settingsRepository.getPromptId() ?: "",
+            vectorStoreIds = settingsRepository.getVectorStoreIds().joinToString(", "),
             userId = userRepository.getUserEmail() ?: ""
         )
     }
@@ -39,25 +41,31 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(apiKey = cleaned, apiKeyError = null, isSaved = false)
     }
 
-    fun onAssistantIdChange(value: String) {
+    fun onPromptIdChange(value: String) {
         val cleaned = value.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
-        _uiState.value = _uiState.value.copy(assistantId = cleaned, assistantIdError = null, isSaved = false)
+        _uiState.value = _uiState.value.copy(promptId = cleaned, promptIdError = null, isSaved = false)
+    }
+
+    fun onVectorStoreIdsChange(value: String) {
+        _uiState.value = _uiState.value.copy(vectorStoreIds = value, isSaved = false)
     }
 
     fun onSave() {
         val state = _uiState.value
-        val apiKeyError = if (!state.apiKey.startsWith("sk-")) "API key must start with 'sk-'" else null
-        val assistantIdError = if (!state.assistantId.startsWith("asst_")) "Assistant ID must start with 'asst_'" else null
+        val apiKeyError = if (!state.apiKey.startsWith("sk-")) "API-Schlüssel muss mit 'sk-' beginnen" else null
+        val promptIdError = if (state.promptId.isBlank()) "Prompt-ID darf nicht leer sein" else null
 
-        if (apiKeyError != null || assistantIdError != null) {
-            _uiState.value = state.copy(apiKeyError = apiKeyError, assistantIdError = assistantIdError)
+        if (apiKeyError != null || promptIdError != null) {
+            _uiState.value = state.copy(apiKeyError = apiKeyError, promptIdError = promptIdError)
             return
         }
 
-        val cleanedApiKey = state.apiKey.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
-        val cleanedAssistantId = state.assistantId.lines().map { it.trim() }.filter { it.isNotEmpty() }.joinToString("")
+        val cleanedApiKey = state.apiKey.trim()
+        val cleanedPromptId = state.promptId.trim()
+        val parsedVsIds = state.vectorStoreIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
         settingsRepository.saveApiKey(cleanedApiKey)
-        settingsRepository.saveAssistantId(cleanedAssistantId)
+        settingsRepository.savePromptId(cleanedPromptId)
+        settingsRepository.saveVectorStoreIds(parsedVsIds)
 
         // TODO: GET_CONFIGURATION vom Assistenten holen, hier Platzhalter: Starters aus Datei lesen
         // In Produktion: Netzwerkaufruf, hier Demo: Lese aus assets/starters.md

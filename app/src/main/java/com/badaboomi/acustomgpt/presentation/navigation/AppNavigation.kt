@@ -45,7 +45,8 @@ fun AppNavigation(settingsRepository: SettingsRepository) {
             SetupScreen(
                 uiState = state,
                 onApiKeyChange = viewModel::onApiKeyChange,
-                onAssistantIdChange = viewModel::onAssistantIdChange,
+                onPromptIdChange = viewModel::onPromptIdChange,
+                onVectorStoreIdsChange = viewModel::onVectorStoreIdsChange,
                 onSave = viewModel::onSave
             )
         }

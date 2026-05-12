@@ -7,15 +7,13 @@ import com.badaboomi.acustomgpt.data.local.entity.ChatEntity
 import com.badaboomi.acustomgpt.data.local.entity.MessageEntity
 import com.badaboomi.acustomgpt.data.local.entity.RoomEntity
 import com.badaboomi.acustomgpt.data.remote.OpenAiApiService
-import com.badaboomi.acustomgpt.data.remote.dto.CreateMessageRequest
-import com.badaboomi.acustomgpt.data.remote.dto.CreateRunRequest
+import com.badaboomi.acustomgpt.data.remote.dto.CreateResponseRequest
 import com.badaboomi.acustomgpt.domain.model.Chat
 import com.badaboomi.acustomgpt.domain.model.Message
 import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_ASSISTANT
 import com.badaboomi.acustomgpt.domain.model.Message.Companion.ROLE_USER
 import com.badaboomi.acustomgpt.domain.model.Room
 import com.badaboomi.acustomgpt.domain.repository.ChatRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -36,16 +34,7 @@ class ChatRepositoryImpl @Inject constructor(
 ) : ChatRepository {
 
     companion object {
-        /** Interval between run-status poll requests in milliseconds. */
-        private const val POLL_INTERVAL_MS = 1500L
-        /** Maximum number of poll attempts before giving up on a run. */
-        private const val MAX_POLL_ATTEMPTS = 40
-
-        private const val RUN_STATUS_QUEUED = "queued"
-        private const val RUN_STATUS_IN_PROGRESS = "in_progress"
-        private const val RUN_STATUS_COMPLETED = "completed"
-        /** OpenAI timestamps are in seconds; local timestamps are in milliseconds. */
-        private const val OPENAI_TIMESTAMP_TO_MS = 1000L
+        private const val RESPONSE_STATUS_COMPLETED = "completed"
     }
 
     override fun getAllRooms(): Flow<List<Room>> =
@@ -68,12 +57,12 @@ class ChatRepositoryImpl @Inject constructor(
         chatDao.getChatsForRoom(roomId).map { list -> list.map { it.toDomain() } }
 
     override suspend fun createChat(roomId: String, name: String): Chat {
-        val thread = apiService.createThread()
+        val conversation = apiService.createConversation()
         val chatEntity = ChatEntity(
             id = UUID.randomUUID().toString(),
             roomId = roomId,
             name = name,
-            threadId = thread.id,
+            threadId = conversation.id,
             createdAt = System.currentTimeMillis()
         )
         chatDao.insertChat(chatEntity)
@@ -99,7 +88,7 @@ class ChatRepositoryImpl @Inject constructor(
     override fun getMessagesForChat(chatId: String): Flow<List<Message>> =
         messageDao.getMessagesForChat(chatId).map { list -> list.map { it.toDomain() } }
 
-    override suspend fun sendMessage(chat: Chat, userText: String, assistantId: String) {
+    override suspend fun sendMessage(chat: Chat, userText: String, promptId: String, vectorStoreIds: List<String>) {
         val userMessageEntity = MessageEntity(
             id = UUID.randomUUID().toString(),
             chatId = chat.id,
@@ -109,55 +98,48 @@ class ChatRepositoryImpl @Inject constructor(
         )
         messageDao.insertMessage(userMessageEntity)
 
-
         val userId = userRepository.getUserEmail()?.takeIf { it.isNotBlank() } ?: ""
         val contentWithUser = "[user-id: $userId] $userText"
-        val messagePayload = CreateMessageRequest(content = contentWithUser)
+
+        val tools = if (vectorStoreIds.isNotEmpty()) {
+            listOf(CreateResponseRequest.Tool(type = "file_search", vectorStoreIds = vectorStoreIds))
+        } else null
+
+        val request = CreateResponseRequest(
+            prompt = CreateResponseRequest.PromptRef(id = promptId),
+            input = listOf(CreateResponseRequest.InputItem(role = ROLE_USER, content = contentWithUser)),
+            conversation = chat.threadId,
+            tools = tools
+        )
         if (ToolConfig.logModelPayload) {
-            Log.d("ModelPayload", "addMessage: " + Gson().toJson(messagePayload))
+            Log.d("ModelPayload", "createResponse: " + Gson().toJson(request))
         }
-        apiService.addMessage(chat.threadId, messagePayload)
 
-        val runPayload = CreateRunRequest(assistantId = assistantId)
+        val response = apiService.createResponse(request)
+
         if (ToolConfig.logModelPayload) {
-            Log.d("ModelPayload", "createRun: " + Gson().toJson(runPayload))
-        }
-        val run = apiService.createRun(chat.threadId, runPayload)
-
-        var runStatus = run.status
-        var pollAttempts = 0
-        while ((runStatus == RUN_STATUS_QUEUED || runStatus == RUN_STATUS_IN_PROGRESS) && pollAttempts < MAX_POLL_ATTEMPTS) {
-            delay(POLL_INTERVAL_MS)
-            val updatedRun = apiService.getRun(chat.threadId, run.id)
-            runStatus = updatedRun.status
-            pollAttempts++
+            Log.d("ModelPayload", "response.status: ${response.status}")
+            Log.d("ModelPayload", "response.output: " + Gson().toJson(response.output))
         }
 
-        if (runStatus != RUN_STATUS_COMPLETED) {
-            error("Run did not complete (status=$runStatus, attempts=$pollAttempts)")
+        if (response.status != RESPONSE_STATUS_COMPLETED) {
+            error("Response did not complete (status=${response.status})")
         }
 
-        val messagesResponse = apiService.getMessages(chat.threadId)
-        if (ToolConfig.logModelPayload) {
-            val assistantRawMessages = messagesResponse.data.filter { it.role == ROLE_ASSISTANT }
-            val assistantTextMessages = assistantRawMessages.map { it.getTextContent() }
-            Log.d("ModelPayload", "assistantResponse.raw: " + Gson().toJson(assistantRawMessages))
-            Log.d("ModelPayload", "assistantResponse.text: " + Gson().toJson(assistantTextMessages))
-        }
-        val existingLatest = messageDao.getLatestMessage(chat.id)
-        val existingTime = existingLatest?.createdAt ?: 0L
-
-        val newMessages = messagesResponse.data
-            .filter { it.role == ROLE_ASSISTANT && it.createdAt * OPENAI_TIMESTAMP_TO_MS > existingTime }
-            .flatMap { msg ->
-                val parts = splitAssistantResponse(msg.getTextContent())
-                parts.mapIndexed { index, part ->
+        val now = System.currentTimeMillis()
+        val newMessages = response.output
+            .filterIndexed { msgIndex, item ->
+                item.type == "message" && item.role == ROLE_ASSISTANT
+            }
+            .flatMapIndexed { msgIndex, item ->
+                val parts = splitAssistantResponse(item.getTextContent())
+                parts.mapIndexed { partIndex, part ->
                     MessageEntity(
-                        id = if (index == 0) msg.id else "${msg.id}_$index",
+                        id = if (partIndex == 0) item.id else "${item.id}_$partIndex",
                         chatId = chat.id,
-                        role = msg.role,
+                        role = ROLE_ASSISTANT,
                         content = part,
-                        createdAt = (msg.createdAt * OPENAI_TIMESTAMP_TO_MS) + index
+                        createdAt = now + msgIndex * 10L + partIndex
                     )
                 }
             }

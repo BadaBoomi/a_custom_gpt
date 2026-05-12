@@ -73,13 +73,14 @@ class ConversationViewModel @Inject constructor(
         val text = state.inputText.trim()
         if (text.isBlank()) return
 
-        val assistantId = settingsRepository.getAssistantId() ?: return
+        val promptId = settingsRepository.getPromptId() ?: return
+        val vectorStoreIds = settingsRepository.getVectorStoreIds()
 
         _uiState.value = state.copy(inputText = "", isLoading = true, error = null)
 
         viewModelScope.launch {
             try {
-                chatRepository.sendMessage(chat, text, assistantId)
+                chatRepository.sendMessage(chat, text, promptId, vectorStoreIds)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             } finally {

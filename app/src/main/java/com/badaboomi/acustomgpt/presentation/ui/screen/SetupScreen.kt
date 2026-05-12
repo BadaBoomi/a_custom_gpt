@@ -24,7 +24,8 @@ import com.badaboomi.acustomgpt.presentation.viewmodel.SetupUiState
 fun SetupScreen(
     uiState: SetupUiState,
     onApiKeyChange: (String) -> Unit,
-    onAssistantIdChange: (String) -> Unit,
+    onPromptIdChange: (String) -> Unit,
+    onVectorStoreIdsChange: (String) -> Unit,
     onSave: () -> Unit
 ) {
     Column(
@@ -68,12 +69,23 @@ fun SetupScreen(
         )
 
         OutlinedTextField(
-            value = uiState.assistantId,
-            onValueChange = onAssistantIdChange,
-            label = { Text("Assistant-ID") },
-            placeholder = { Text("asst_...") },
-            isError = uiState.assistantIdError != null,
-            supportingText = uiState.assistantIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+            value = uiState.promptId,
+            onValueChange = onPromptIdChange,
+            label = { Text("Prompt-ID") },
+            placeholder = { Text("prompt_...") },
+            isError = uiState.promptIdError != null,
+            supportingText = uiState.promptIdError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = uiState.vectorStoreIds,
+            onValueChange = onVectorStoreIdsChange,
+            label = { Text("Vector-Store-IDs") },
+            placeholder = { Text("vs_abc123, vs_def456") },
+            supportingText = { Text("Kommagetrennte IDs (optional)") },
             modifier = Modifier.fillMaxWidth()
         )
 

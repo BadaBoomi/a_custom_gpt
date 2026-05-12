@@ -26,7 +26,6 @@ object NetworkModule {
                 val userEmail = encryptedPrefsManager.getUserEmail() ?: ""
                 val request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("OpenAI-Beta", "assistants=v2")
                     .addHeader("user-id", userEmail)
                     .build()
                 chain.proceed(request)
