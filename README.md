@@ -41,7 +41,8 @@ Die App führt zwei Authentisierungsmethoden für Assistenten aus:
 ### 1. Direkte API-Key & Assistant-ID
 Die primäre Authentisierungsmethode erfolgt über:
 - **API-Key**: OpenAI API-Key für Authentifizierung bei der OpenAI API
-- **Assistant-ID**: Die ID des konfigurierten Assistenten
+- **PROMPT-ID**: Die ID des konfigurierten OpenAI Prompts
+- **VECTORS-TORE-IDS**: Komma getrennte Liste von OpenAI Vector-Stores
 
 Diese Werte werden im Setup-Dialog eingegeben und lokal verschlüsselt gespeichert.
 
@@ -104,6 +105,28 @@ Nach dem Speichern der Konfiguration lädt die App die Starters automatisch:
 - **Chats umbenennen**: Mit dem Bearbeiten-Icon
 - **Chats löschen**: Mit dem Löschen-Icon
 - **Chats verschieben**: Chats zwischen Räumen mit dem Pfeil-Icon verschieben
+
+## Konfiguration
+
+Die App kann über eine Umgebungsdatei `.env` konfiguriert werden. Die wichtigsten Einstellungen sind:
+
+| Variable              | Beschreibung                                                                 | Beispielwert                |
+|-----------------------|------------------------------------------------------------------------------|-----------------------------|
+| `TOOLS`               | Aktivierte Tools, durch Kommas getrennt                                      | `web_search,calculator`     |
+| `LOG_MODEL_PAYLOAD`   | Logging der Modell-Payload (true/false)                                      | `false`                     |
+| `LOG_LEVEL`           | Logging-Level für Debug-Ausgaben (`DEBUG`, `INFO`, `WARN`, `ERROR`)          | `ERROR`                     |
+
+**Beispiel `.env`:**
+
+```env
+TOOLS=web_search
+LOG_MODEL_PAYLOAD=false
+LOG_LEVEL=ERROR
+```
+
+**Hinweise:**
+- Mehrere Tools können durch Kommas getrennt werden.
+- Die `.env`-Datei befindet sich im Projektverzeichnis und wird beim Start der App eingelesen.
 
 ## Lizenz
 
